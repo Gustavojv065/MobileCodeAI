@@ -19,6 +19,14 @@ jobs:
           test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.13.apk)" = "7686618"
           echo "6022ac9595c6aa402e977ea0a1b692230efd1f262a50bcdf55f166950186675d  ALTIV-PERSONAL-AI-Alpha-0.13.apk" | sha256sum -c -
 
+      - name: Upload exact APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ALTIV-PERSONAL-AI-Alpha-0.13-FINAL
+          path: ALTIV-PERSONAL-AI-Alpha-0.13.apk
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
