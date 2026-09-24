@@ -25,5 +25,5 @@ jobs:
         run: |
           set -euxo pipefail
           TAG="altiv-personal-ai-alpha-0.5"
-          gh release view "$TAG" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.5"               --notes "APK de teste da Alpha 0.5: IA local + pesquisa web com fontes."
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.5"               --notes "APK de teste da Alpha 0.5: IA local + pesquisa web com fontes."
           gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.5.apk             --repo "$GITHUB_REPOSITORY"             --clobber
