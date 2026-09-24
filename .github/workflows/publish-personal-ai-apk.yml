@@ -12,20 +12,25 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Download verified APK
+      - name: Checkout APK parts
+        uses: actions/checkout@v4
+
+      - name: Reconstruct and verify APK
         run: |
           set -euxo pipefail
-          curl -fL --retry 4             "https://litter.catbox.moe/ai06rb.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.13.apk
-          test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.13.apk)" = "7686186"
-          echo "97ada7b022985d35b63b17bdc95293fae1fc1d499b948d003682fc40af8e0b75  ALTIV-PERSONAL-AI-Alpha-0.13.apk" | sha256sum -c -
+          mkdir -p dist
+          cat apk-parts/alpha-0.13/part-* > dist/ALTIV-PERSONAL-AI-Alpha-0.13.apk
+          test "$(stat -c%s dist/ALTIV-PERSONAL-AI-Alpha-0.13.apk)" = "7686186"
+          echo "3a0634bb9346015c07e2433a0eb50c8e19e92fa275d2bba1a52d27dbb22119ab  dist/ALTIV-PERSONAL-AI-Alpha-0.13.apk" | sha256sum -c -
 
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
           name: ALTIV-PERSONAL-AI-Alpha-0.13-CHAT
-          path: ALTIV-PERSONAL-AI-Alpha-0.13.apk
+          path: dist/ALTIV-PERSONAL-AI-Alpha-0.13.apk
           if-no-files-found: error
           retention-days: 1
+          compression-level: 0
 
       - name: Publish release
         env:
@@ -33,5 +38,6 @@ jobs:
         run: |
           set -euxo pipefail
           TAG="altiv-personal-ai-alpha-0.13"
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.13"               --notes "Alpha 0.13: separa downloader de modelos do downloader de mídia e corrige erro DOWNLOAD_FAILED em Qwen/Llama."
-          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.13.apk             --repo "$GITHUB_REPOSITORY"             --clobber
+          APK="dist/ALTIV-PERSONAL-AI-Alpha-0.13.apk"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.13"               --notes "Alpha 0.13: corrige conflito entre o download de modelos Qwen/Llama e o download de mídia."
+          gh release upload "$TAG" "$APK" --repo "$GITHUB_REPOSITORY" --clobber
