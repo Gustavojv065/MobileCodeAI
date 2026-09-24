@@ -15,15 +15,15 @@ jobs:
       - name: Download verified APK
         run: |
           set -euxo pipefail
-          curl -fL --retry 4             "https://litter.catbox.moe/048ooa.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.7.apk
-          test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.7.apk)" = "7668622"
-          echo "a03d5c2375825c9f57e8dcaa2930bf05d5c2e27fa0009473c7c0480a2433bdde  ALTIV-PERSONAL-AI-Alpha-0.7.apk" | sha256sum -c -
+          curl -fL --retry 4             "https://litter.catbox.moe/gxp74w.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.8.apk
+          test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.8.apk)" = "7669014"
+          echo "5333177714c171fd9ebbab1ccf4e8c3d0d86fd42a4aa085862135a55f4ab935e  ALTIV-PERSONAL-AI-Alpha-0.8.apk" | sha256sum -c -
 
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ALTIV-PERSONAL-AI-Alpha-0.7-CHAT
-          path: ALTIV-PERSONAL-AI-Alpha-0.7.apk
+          name: ALTIV-PERSONAL-AI-Alpha-0.8-CHAT
+          path: ALTIV-PERSONAL-AI-Alpha-0.8.apk
           if-no-files-found: error
           retention-days: 1
 
@@ -32,6 +32,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euxo pipefail
-          TAG="altiv-personal-ai-alpha-0.7"
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.7"               --notes "Alpha 0.7: UI compacta, memórias inteligentes, pensamento, skills, anexos e base visual."
-          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.7.apk             --repo "$GITHUB_REPOSITORY"             --clobber
+          TAG="altiv-personal-ai-alpha-0.8"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.8"               --notes "Alpha 0.8: correção de insets Android, navegação, teclado e responsividade."
+          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.8.apk             --repo "$GITHUB_REPOSITORY"             --clobber
