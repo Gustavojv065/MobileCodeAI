@@ -1,0 +1,29 @@
+name: Publish ALTIV PERSONAL AI APK
+
+on:
+  push:
+    branches: [personal-ai-apk-release]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download APK
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 4             "https://tmpfiles.org/dl/wwwWEd6L7V5c/altiv-personal-ai-alpha-0.5.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.5.apk
+          test -s ALTIV-PERSONAL-AI-Alpha-0.5.apk
+          sha256sum ALTIV-PERSONAL-AI-Alpha-0.5.apk
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          TAG="altiv-personal-ai-alpha-0.5"
+          gh release view "$TAG" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.5"               --notes "APK de teste da Alpha 0.5: IA local + pesquisa web com fontes."
+          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.5.apk             --repo "$GITHUB_REPOSITORY"             --clobber
