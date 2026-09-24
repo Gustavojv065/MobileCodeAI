@@ -15,15 +15,15 @@ jobs:
       - name: Download verified APK
         run: |
           set -euxo pipefail
-          curl -fL --retry 4             "https://litter.catbox.moe/2f7gej.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.13.apk
-          test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.13.apk)" = "7686618"
-          echo "6022ac9595c6aa402e977ea0a1b692230efd1f262a50bcdf55f166950186675d  ALTIV-PERSONAL-AI-Alpha-0.13.apk" | sha256sum -c -
+          curl -fL --retry 4             "https://litter.catbox.moe/u7hybp.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.14.apk
+          test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.14.apk)" = "7690522"
+          echo "b89b3f05514ab0713abfa461ffe140fa284063e69c723b7f3c03ae61a750bf89  ALTIV-PERSONAL-AI-Alpha-0.14.apk" | sha256sum -c -
 
       - name: Upload exact APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ALTIV-PERSONAL-AI-Alpha-0.13-FINAL
-          path: ALTIV-PERSONAL-AI-Alpha-0.13.apk
+          name: ALTIV-PERSONAL-AI-Alpha-0.14-FINAL
+          path: ALTIV-PERSONAL-AI-Alpha-0.14.apk
           if-no-files-found: error
           retention-days: 1
 
@@ -32,6 +32,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euxo pipefail
-          TAG="altiv-personal-ai-alpha-0.13"
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.13"               --notes "Alpha 0.13: instalador offline de modelos isolado do downloader de mídia."
-          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.13.apk             --repo "$GITHUB_REPOSITORY"             --clobber
+          TAG="altiv-personal-ai-alpha-0.14"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.14"               --notes "Alpha 0.14: ditado por voz em português e leitura das respostas com TTS do Android."
+          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.14.apk             --repo "$GITHUB_REPOSITORY"             --clobber
