@@ -15,15 +15,15 @@ jobs:
       - name: Download verified APK
         run: |
           set -euxo pipefail
-          curl -fL --retry 4             "https://litter.catbox.moe/bhp6l7.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.10.apk
-          test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.10.apk)" = "7679910"
-          echo "3dfb44e8325e0f3126132973582325eaa5e0cb06e45a8d39aeb9cca5fdd27e81  ALTIV-PERSONAL-AI-Alpha-0.10.apk" | sha256sum -c -
+          curl -fL --retry 4             "https://litter.catbox.moe/se47fi.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.11.apk
+          test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.11.apk)" = "7683314"
+          echo "ecf5fee0b454c5eb0bfd2ab6234693f27de5d00b2c68249063a7ab616435887c  ALTIV-PERSONAL-AI-Alpha-0.11.apk" | sha256sum -c -
 
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ALTIV-PERSONAL-AI-Alpha-0.10-CHAT
-          path: ALTIV-PERSONAL-AI-Alpha-0.10.apk
+          name: ALTIV-PERSONAL-AI-Alpha-0.11-CHAT
+          path: ALTIV-PERSONAL-AI-Alpha-0.11.apk
           if-no-files-found: error
           retention-days: 1
 
@@ -32,6 +32,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euxo pipefail
-          TAG="altiv-personal-ai-alpha-0.10"
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.10"               --notes "Alpha 0.10: copiar respostas e baixar imagens, logos, cards e diagramas."
-          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.10.apk             --repo "$GITHUB_REPOSITORY"             --clobber
+          TAG="altiv-personal-ai-alpha-0.11"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.11"               --notes "Alpha 0.11: gerenciador local Qwen + Llama, downloader robusto e Ollama externo esclarecido."
+          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.11.apk             --repo "$GITHUB_REPOSITORY"             --clobber
