@@ -15,15 +15,15 @@ jobs:
       - name: Download verified APK
         run: |
           set -euxo pipefail
-          curl -fL --retry 4             "https://litter.catbox.moe/3qa0by.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.5.apk
-          test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.5.apk)" = "7656142"
-          echo "146837e381e673af6927415d3f0c232e52c593a26fc01fe5f7e6108bd7d90246  ALTIV-PERSONAL-AI-Alpha-0.5.apk" | sha256sum -c -
+          curl -fL --retry 4             "https://litter.catbox.moe/yzc68l.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.6.apk
+          test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.6.apk)" = "7663278"
+          echo "a619a4298dabe300ab7fb0b6d6bd4d41cd65b4753c92e8235ebdf70883790f7d  ALTIV-PERSONAL-AI-Alpha-0.6.apk" | sha256sum -c -
 
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ALTIV-PERSONAL-AI-Alpha-0.5-CHAT
-          path: ALTIV-PERSONAL-AI-Alpha-0.5.apk
+          name: ALTIV-PERSONAL-AI-Alpha-0.6-CHAT
+          path: ALTIV-PERSONAL-AI-Alpha-0.6.apk
           if-no-files-found: error
           retention-days: 1
 
@@ -32,6 +32,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euxo pipefail
-          TAG="altiv-personal-ai-alpha-0.5"
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.5"               --notes "APK de teste da Alpha 0.5: IA local + pesquisa web com fontes."
-          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.5.apk             --repo "$GITHUB_REPOSITORY"             --clobber
+          TAG="altiv-personal-ai-alpha-0.6"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.6"               --notes "Alpha 0.6: descoberta automática de modelos por API, seleção automática/manual e fallback."
+          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.6.apk             --repo "$GITHUB_REPOSITORY"             --clobber
