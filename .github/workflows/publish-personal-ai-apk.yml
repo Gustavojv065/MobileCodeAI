@@ -15,7 +15,7 @@ jobs:
       - name: Download verified APK
         run: |
           set -euxo pipefail
-          curl -fL --retry 4             "https://litter.catbox.moe/niw0ip.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.18.apk
+          curl -fL --retry 4             "https://raw.githubusercontent.com/Gustavojv065/altiv-code-mobile/apk-transfer/releases/ALTIV-PERSONAL-AI-Alpha-0.18.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.18.apk
           test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.18.apk)" = "7698766"
           echo "3949e8f182087a36613db71b1165bb7e7d800079fa763113ffc21457c1913d30  ALTIV-PERSONAL-AI-Alpha-0.18.apk" | sha256sum -c -
 
