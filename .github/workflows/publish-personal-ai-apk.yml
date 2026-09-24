@@ -15,15 +15,15 @@ jobs:
       - name: Download verified APK
         run: |
           set -euxo pipefail
-          curl -fL --retry 4             "https://litter.catbox.moe/k4zbwf.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.16.apk
-          test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.16.apk)" = "7696318"
-          echo "b015ea2b5353a89fcf6f7bb57a958a40524408ed7a951a34ceddfe44871cca77  ALTIV-PERSONAL-AI-Alpha-0.16.apk" | sha256sum -c -
+          curl -fL --retry 4             "https://litter.catbox.moe/e2yu4h.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.17.apk
+          test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.17.apk)" = "7698206"
+          echo "086573ac08f47383d3042dc1cee18e49a4150b736c49f56729745b32d0a0f67c  ALTIV-PERSONAL-AI-Alpha-0.17.apk" | sha256sum -c -
 
       - name: Upload exact APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ALTIV-PERSONAL-AI-Alpha-0.16-FINAL
-          path: ALTIV-PERSONAL-AI-Alpha-0.16.apk
+          name: ALTIV-PERSONAL-AI-Alpha-0.17-FINAL
+          path: ALTIV-PERSONAL-AI-Alpha-0.17.apk
           if-no-files-found: error
           retention-days: 1
 
@@ -32,6 +32,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euxo pipefail
-          TAG="altiv-personal-ai-alpha-0.16"
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.16"               --notes "Alpha 0.16: contexto inteligente, histórico ampliado, recuperação de recusas e fallback local."
-          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.16.apk             --repo "$GITHUB_REPOSITORY"             --clobber
+          TAG="altiv-personal-ai-alpha-0.17"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.17"               --notes "Alpha 0.17: Truth Guard, checagem factual, revisão local e web grounding automático."
+          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.17.apk             --repo "$GITHUB_REPOSITORY"             --clobber
