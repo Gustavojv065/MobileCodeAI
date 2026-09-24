@@ -1,0 +1,6 @@
+name=ALTIV-PERSONAL-AI-Alpha-0.18.apk
+size=7699942
+sha256=e2cf3dad4be79f936fd83a0c4e4cc87ad63f057e6d0c000d59aed2448587cbf8
+base64_size=10266592
+chunks=26
+chunk_bytes=400000
