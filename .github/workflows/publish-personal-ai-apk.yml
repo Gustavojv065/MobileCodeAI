@@ -15,25 +15,24 @@ jobs:
       - name: Download verified APK
         run: |
           set -euxo pipefail
-          curl -fL --retry 4 --retry-all-errors --connect-timeout 20 --max-time 180 --speed-time 30 --speed-limit 1024 \
-            "https://litter.catbox.moe/niw0ip.apk" \
-            -o ALTIV-PERSONAL-AI-Alpha-0.18.apk
-          test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.18.apk)" = "7698766"
-          echo "3949e8f182087a36613db71b1165bb7e7d800079fa763113ffc21457c1913d30  ALTIV-PERSONAL-AI-Alpha-0.18.apk" | sha256sum -c -
+          curl -fL --retry 4             "https://litter.catbox.moe/73vpm4.apk"             -o ALTIV-PERSONAL-AI-Alpha-0.19.apk
+          test "$(stat -c%s ALTIV-PERSONAL-AI-Alpha-0.19.apk)" = "7701350"
+          echo "93a649529706f23c4e28ab61e14bce3f2ef6ea32c4b240a218d9aea3cb887526  ALTIV-PERSONAL-AI-Alpha-0.19.apk" | sha256sum -c -
 
       - name: Upload exact APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ALTIV-PERSONAL-AI-Alpha-0.18-FINAL
-          path: ALTIV-PERSONAL-AI-Alpha-0.18.apk
+          name: ALTIV-PERSONAL-AI-Alpha-0.19-FINAL
+          path: ALTIV-PERSONAL-AI-Alpha-0.19.apk
           if-no-files-found: error
           retention-days: 1
+          compression-level: 0
 
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euxo pipefail
-          TAG="altiv-personal-ai-alpha-0.18"
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.18"               --notes "Alpha 0.18: Gemma 3 270M ultra-light local model, alongside Qwen and Llama."
-          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.18.apk             --repo "$GITHUB_REPOSITORY"             --clobber
+          TAG="altiv-personal-ai-alpha-0.19"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG"               --repo "$GITHUB_REPOSITORY"               --target "$GITHUB_SHA"               --title "ALTIV PERSONAL AI Alpha 0.19"               --notes "Alpha 0.19: Smart Local, prompt leve para Gemma, roteamento aprimorado e recuperação de respostas curtas."
+          gh release upload "$TAG"             ALTIV-PERSONAL-AI-Alpha-0.19.apk             --repo "$GITHUB_REPOSITORY"             --clobber
