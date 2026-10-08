@@ -1,6 +1,8 @@
 import { GitHubClient, splitRepo } from './lib/github.js'
 import { runAgent } from './lib/ai.js'
 import { DEPLOY_PRESETS, triggerAll } from './lib/deploy.js'
+import { detectSkills } from './lib/skills.js'
+import { loadProjectMemory, rememberRun } from './lib/memory.js'
 
 const $ = (id) => document.getElementById(id)
 let repos = []
@@ -139,10 +141,14 @@ async function executeAgent() {
   $('agentStatus').textContent='ALTIV analisando o projeto...'
   $('agentLog').textContent=''
 
+  const skills=detectSkills(prompt)
+  const memory=await loadProjectMemory(full)
   const context=[
     'Repo: '+full,
     'Branch: '+base,
     'Arquivos raiz: '+currentRoot.map(x=>x.path).join(', '),
+    'Skills selecionadas: '+skills.map(x=>x.label).join(', '),
+    'Memória recente: '+JSON.stringify((memory.notes||[]).slice(-5)),
     $('fileSelect').value ? ('Arquivo selecionado: '+$('fileSelect').value+'\n'+$('filePreview').value.slice(0,30000)) : ''
   ].join('\n')
 
@@ -184,8 +190,11 @@ async function executeAgent() {
   $('agentStatus').textContent='Disparando deploys configurados...'
   const deploys=await triggerAll(settings.deployTargets||[])
 
+  await rememberRun(full,prompt,plan.summary||'')
+
   $('agentLog').textContent=JSON.stringify({
     summary:plan.summary,
+    skills:skills.map(x=>x.label),
     branch:targetBranch,
     pullRequest:pr?.html_url,
     media,
