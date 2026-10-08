@@ -6,10 +6,12 @@ import { DEPLOY_PRESETS, triggerAll } from './lib/deploy.js'
 import { MEDIA_OPERATIONS, runMedia } from './lib/media.js'
 import { loadProjectMemory, rememberRun } from './lib/memory.js'
 import { addJob, updateJob, listJobs, clearJobs } from './lib/jobs.js'
+import { providerEntries, listProviderModels, autoModel, PROVIDERS } from './lib/providers.js'
 
 const $ = id => document.getElementById(id)
 let repos=[]
 let currentRoot=[]
+let providerModels={}
 
 document.querySelectorAll('nav button').forEach(btn=>btn.addEventListener('click',async()=>{
   document.querySelectorAll('nav button,.tab').forEach(x=>x.classList.remove('active'))
@@ -20,17 +22,44 @@ document.querySelectorAll('nav button').forEach(btn=>btn.addEventListener('click
 
 async function getSettings(){
   return chrome.storage.local.get([
-    'githubToken','aiProvider','aiKey','aiModel','mediaWorkerUrl','mediaWorkerKey',
-    'deployTargets','lovableUrl'
+    'githubToken','aiProvider','providerKeys','modelMode','manualModels','selectedModels','maxTokens',
+    'mediaWorkerUrl','mediaWorkerKey','deployTargets','lovableUrl'
   ])
 }
 
+async function currentAIConfig(){
+  const s=await getSettings()
+  const provider=s.aiProvider||'openrouter'
+  const keys=s.providerKeys||{}
+  const mode=s.modelMode||'auto'
+  const available=providerModels[provider]||[]
+  const selected=s.selectedModels?.[provider]||''
+  const manual=s.manualModels?.[provider]||''
+  const model=mode==='manual'
+    ? (manual||selected||PROVIDERS[provider]?.defaultModel||'')
+    : (autoModel(provider,available)||selected||PROVIDERS[provider]?.defaultModel||'')
+  return {
+    provider,
+    apiKey:keys[provider]||'',
+    model,
+    maxTokens:Number(s.maxTokens||3072)
+  }
+}
+
 async function saveSettings(){
+  const s=await getSettings()
+  const provider=$('aiProvider').value
+  const keys={...(s.providerKeys||{}),[provider]:$('aiKey').value.trim()}
+  const manuals={...(s.manualModels||{}),[provider]:$('aiModelManual').value.trim()}
+  const selected={...(s.selectedModels||{}),[provider]:$('aiModelSelect').value}
   const value={
     githubToken:$('githubToken').value.trim(),
-    aiProvider:$('aiProvider').value,
-    aiKey:$('aiKey').value.trim(),
-    aiModel:$('aiModel').value.trim(),
+    aiProvider:provider,
+    providerKeys:keys,
+    modelMode:$('modelMode').value,
+    manualModels:manuals,
+    selectedModels:selected,
+    maxTokens:Number($('maxTokens').value||3072),
     mediaWorkerUrl:$('mediaWorkerUrl').value.trim(),
     mediaWorkerKey:$('mediaWorkerKey').value.trim(),
     lovableUrl:$('lovableUrl').value.trim(),
@@ -42,9 +71,61 @@ async function saveSettings(){
   if(value.githubToken) await loadRepos()
 }
 
+async function saveCurrentProviderKey(){
+  const s=await getSettings()
+  const provider=$('aiProvider').value
+  const keys={...(s.providerKeys||{}),[provider]:$('aiKey').value.trim()}
+  await chrome.storage.local.set({providerKeys:keys,aiProvider:provider})
+  $('settingsStatus').textContent='Chave de '+(PROVIDERS[provider]?.label||provider)+' salva.'
+}
+
 function client(token){
   if(!token) throw new Error('Configure o GitHub Token.')
   return new GitHubClient(token)
+}
+
+function renderProviderOptions(selected='openrouter'){
+  $('aiProvider').innerHTML=providerEntries().map(p=>`<option value="${p.id}">${p.label}${p.freeFirst?' • free-first':''}</option>`).join('')
+  $('aiProvider').value=selected
+}
+
+async function loadProviderUI({refresh=false}={}){
+  const s=await getSettings()
+  const provider=$('aiProvider').value||s.aiProvider||'openrouter'
+  const keys=s.providerKeys||{}
+  $('aiKey').value=keys[provider]||''
+  $('modelMode').value=s.modelMode||'auto'
+  $('maxTokens').value=String(s.maxTokens||3072)
+  $('aiModelManual').value=s.manualModels?.[provider]||''
+
+  if(refresh && keys[provider]){
+    $('settingsStatus').textContent='Buscando modelos de '+(PROVIDERS[provider]?.label||provider)+'...'
+    try{
+      providerModels[provider]=await listProviderModels(provider,keys[provider])
+      $('settingsStatus').textContent=providerModels[provider].length+' modelos encontrados.'
+    }catch(error){
+      $('settingsStatus').textContent='Não foi possível listar modelos: '+error.message
+    }
+  }
+
+  const models=providerModels[provider]||[]
+  const auto=autoModel(provider,models)
+  const saved=s.selectedModels?.[provider]||''
+  const fallback=PROVIDERS[provider]?.defaultModel||''
+  const options=[...new Set([auto,saved,fallback,...models].filter(Boolean))]
+  $('aiModelSelect').innerHTML=options.length
+    ? options.map(id=>`<option value="${escapeHtml(id)}">${escapeHtml(id)}${id===auto?' • AUTO':''}</option>`).join('')
+    : '<option value="">Informe manualmente ou atualize os modelos</option>'
+  if(saved&&options.includes(saved)) $('aiModelSelect').value=saved
+  else if(auto) $('aiModelSelect').value=auto
+
+  updateModelModeUI()
+}
+
+function updateModelModeUI(){
+  const manual=$('modelMode').value==='manual'
+  $('aiModelManual').style.display=manual?'block':'none'
+  $('aiModelSelect').disabled=manual
 }
 
 function renderDeployTargets(saved=[]){
@@ -75,14 +156,13 @@ function renderMediaOperations(){
 async function boot(){
   const s=await getSettings()
   $('githubToken').value=s.githubToken||''
-  $('aiProvider').value=s.aiProvider||'openai'
-  $('aiKey').value=s.aiKey||''
-  $('aiModel').value=s.aiModel||'gpt-5'
+  renderProviderOptions(s.aiProvider||'openrouter')
   $('mediaWorkerUrl').value=s.mediaWorkerUrl||''
   $('mediaWorkerKey').value=s.mediaWorkerKey||''
   $('lovableUrl').value=s.lovableUrl||''
   renderDeployTargets(s.deployTargets||[])
   renderMediaOperations()
+  await loadProviderUI()
   await renderJobs()
   if(s.githubToken) await loadRepos()
 }
@@ -124,8 +204,10 @@ async function loadSelectedFile(){
 
 async function executeAgent(){
   const settings=await getSettings()
+  const ai=await currentAIConfig()
   const gh=client(settings.githubToken)
-  if(!settings.aiKey||!settings.aiModel) throw new Error('Configure a IA e o modelo.')
+  if(!ai.apiKey) throw new Error('Configure a chave API de '+(PROVIDERS[ai.provider]?.label||ai.provider)+'.')
+  if(!ai.model) throw new Error('Selecione ou informe um modelo.')
   const full=$('repoSelect').value
   const {owner,name}=splitRepo(full)
   const base=$('branchSelect').value
@@ -133,41 +215,29 @@ async function executeAgent(){
   if(!prompt) throw new Error('Digite um pedido.')
 
   $('runAgent').disabled=true
-  const job=await addJob({type:'code',title:prompt.slice(0,100),repo:full,status:'running'})
+  const job=await addJob({type:'code',title:prompt.slice(0,100),repo:full,status:'running',provider:ai.provider,model:ai.model})
   await renderJobs()
 
   try{
     $('agentStatus').textContent='Mapeando o projeto...'
     const projectContext=await buildProjectContext(gh,owner,name,base,prompt,14)
-
     if($('fileSelect').value){
-      projectContext.files.unshift({
-        path:$('fileSelect').value,
-        content:$('filePreview').value,
-        sha:null
-      })
+      projectContext.files.unshift({path:$('fileSelect').value,content:$('filePreview').value,sha:null})
     }
 
     const memory=await loadProjectMemory(full)
     let plan
     if($('pipelineMode').value==='smart'){
-      $('agentStatus').textContent='Arquiteto → Executor → Revisor...'
+      $('agentStatus').textContent='Arquiteto → Executor → Revisor • '+ai.model
       plan=await runIntelligentPipeline({
-        provider:settings.aiProvider||'openai',
-        apiKey:settings.aiKey,
-        model:settings.aiModel,
-        prompt,
-        projectContext,
-        memory
+        provider:ai.provider,apiKey:ai.apiKey,model:ai.model,maxTokens:ai.maxTokens,
+        prompt,projectContext,memory
       })
     }else{
-      $('agentStatus').textContent='Executando modo rápido...'
+      $('agentStatus').textContent='Modo rápido • '+ai.model
       plan=await runAgent({
-        provider:settings.aiProvider||'openai',
-        apiKey:settings.aiKey,
-        model:settings.aiModel,
-        prompt,
-        context:JSON.stringify(projectContext)
+        provider:ai.provider,apiKey:ai.apiKey,model:ai.model,maxTokens:ai.maxTokens,
+        prompt,context:JSON.stringify(projectContext)
       })
     }
 
@@ -189,18 +259,12 @@ async function executeAgent(){
 
     const media=[]
     for(const request of plan.mediaRequests||[]){
-      $('agentStatus').textContent='Gerando mídia solicitada pelo agente...'
       try{
         media.push(await runMedia(settings,{
-          operation:request.type==='image'?'image-generate':
-            request.type==='video'?'video-generate':
-            request.type==='audio'?'music-generate':'generate-3d',
-          prompt:request.prompt,
-          projectId:full
+          operation:request.type==='image'?'image-generate':request.type==='video'?'video-generate':request.type==='audio'?'music-generate':'generate-3d',
+          prompt:request.prompt,projectId:full
         }))
-      }catch(error){
-        media.push({ok:false,error:error.message,request})
-      }
+      }catch(error){media.push({ok:false,error:error.message,request})}
     }
 
     let pr
@@ -213,14 +277,7 @@ async function executeAgent(){
     const deploys=await triggerAll(settings.deployTargets||[])
     await rememberRun(full,prompt,plan.summary||'')
 
-    const result={
-      summary:plan.summary,
-      branch:targetBranch,
-      pullRequest:pr?.html_url,
-      media,
-      deploys,
-      notes:plan.notes||[]
-    }
+    const result={summary:plan.summary,provider:ai.provider,model:ai.model,branch:targetBranch,pullRequest:pr?.html_url,media,deploys,notes:plan.notes||[]}
     $('agentLog').textContent=JSON.stringify(result,null,2)
     $('agentStatus').textContent='Concluído. Alterações enviadas ao GitHub.'
     await updateJob(job.id,{status:'done',result})
@@ -239,23 +296,14 @@ async function createRepo(){
   const gh=client(s.githubToken)
   const name=$('newRepoName').value.trim()
   if(!name) throw new Error('Informe o nome do repositório.')
-  const result=await gh.createRepo({
-    name,
-    description:$('newRepoDescription').value.trim(),
-    isPrivate:$('newRepoPrivate').checked
-  })
+  const result=await gh.createRepo({name,description:$('newRepoDescription').value.trim(),isPrivate:$('newRepoPrivate').checked})
   $('githubStatus').textContent='Criado: '+result.full_name
   await loadRepos()
 }
 
 async function executeMedia(){
   const settings=await getSettings()
-  const payload={
-    operation:$('mediaOperation').value,
-    prompt:$('mediaPrompt').value.trim(),
-    inputUrl:$('mediaInputUrl').value.trim()||undefined,
-    projectId:$('repoSelect').value||undefined
-  }
+  const payload={operation:$('mediaOperation').value,prompt:$('mediaPrompt').value.trim(),inputUrl:$('mediaInputUrl').value.trim()||undefined,projectId:$('repoSelect').value||undefined}
   const job=await addJob({type:'media',title:payload.operation,repo:payload.projectId,status:'running'})
   $('mediaStatus').textContent='Enviando ao Media Worker...'
   try{
@@ -276,12 +324,27 @@ async function renderJobs(){
     <div class="job">
       <strong>${escapeHtml(j.title||j.type)}</strong>
       <div class="${j.status==='done'?'ok':j.status==='error'?'err':''}">${escapeHtml(j.status)}</div>
-      <small>${escapeHtml(j.repo||'')} · ${new Date(j.createdAt).toLocaleString()}</small>
+      <small>${escapeHtml(j.repo||'')} ${j.model?'• '+escapeHtml(j.model):''} · ${new Date(j.createdAt).toLocaleString()}</small>
       ${j.error?`<div class="err">${escapeHtml(j.error)}</div>`:''}
     </div>`).join(''):'<p class="muted">Nenhum job ainda.</p>'
 }
 
 $('saveSettings').addEventListener('click',()=>saveSettings().catch(showError))
+$('saveProviderKey').addEventListener('click',()=>saveCurrentProviderKey().catch(showError))
+$('refreshModels').addEventListener('click',()=>loadProviderUI({refresh:true}).catch(showError))
+$('aiProvider').addEventListener('change',async()=>{
+  await chrome.storage.local.set({aiProvider:$('aiProvider').value})
+  await loadProviderUI()
+})
+$('modelMode').addEventListener('change',async()=>{
+  updateModelModeUI()
+  await chrome.storage.local.set({modelMode:$('modelMode').value})
+})
+$('aiModelSelect').addEventListener('change',async()=>{
+  const s=await getSettings()
+  const provider=$('aiProvider').value
+  await chrome.storage.local.set({selectedModels:{...(s.selectedModels||{}),[provider]:$('aiModelSelect').value}})
+})
 $('refreshRepo').addEventListener('click',()=>loadRepo().catch(showError))
 $('repoSelect').addEventListener('change',()=>loadRepo().catch(showError))
 $('fileSelect').addEventListener('change',()=>loadSelectedFile().catch(showError))
@@ -296,14 +359,8 @@ $('testDeploys').addEventListener('click',async()=>{
     $('deployStatus').textContent=JSON.stringify(await triggerAll(targets),null,2)
   }catch(error){showError(error)}
 })
-$('openLovable').addEventListener('click',()=>{
-  const url=$('lovableUrl').value.trim()
-  if(url) chrome.runtime.sendMessage({type:'OPEN_URL',url})
-})
-$('openRepo').addEventListener('click',()=>{
-  const full=$('repoSelect').value
-  if(full) chrome.runtime.sendMessage({type:'OPEN_URL',url:'https://github.com/'+full})
-})
+$('openLovable').addEventListener('click',()=>{const url=$('lovableUrl').value.trim();if(url) chrome.runtime.sendMessage({type:'OPEN_URL',url})})
+$('openRepo').addEventListener('click',()=>{const full=$('repoSelect').value;if(full) chrome.runtime.sendMessage({type:'OPEN_URL',url:'https://github.com/'+full})})
 
 function showError(error){
   const msg=error?.message||String(error)

@@ -120,15 +120,32 @@
   <input id="githubToken" type="password" placeholder="github_pat_...">
 
   <label>Provedor de IA</label>
-  <select id="aiProvider">
-    <option value="openai">OpenAI</option>
-    <option value="openrouter">OpenRouter</option>
-    <option value="gemini">Gemini</option>
+  <select id="aiProvider"></select>
+
+  <label>Chave API do provedor</label>
+  <input id="aiKey" type="password" placeholder="A chave muda automaticamente conforme o provedor">
+  <div class="toolbar">
+    <button id="saveProviderKey">Salvar chave deste provedor</button>
+    <button id="refreshModels">Atualizar modelos</button>
+  </div>
+
+  <label>Seleção de modelo</label>
+  <select id="modelMode">
+    <option value="auto">Automática — priorizar gratuitos/free tier</option>
+    <option value="manual">Manual</option>
   </select>
-  <label>Chave API</label>
-  <input id="aiKey" type="password" placeholder="Chave API">
-  <label>Modelo</label>
-  <input id="aiModel" placeholder="Ex.: gpt-5.6, modelo OpenRouter ou Gemini">
+
+  <label>Modelo disponível</label>
+  <select id="aiModelSelect"></select>
+  <input id="aiModelManual" placeholder="Ou informe o ID do modelo manualmente">
+
+  <label>Limite de saída por chamada</label>
+  <select id="maxTokens">
+    <option value="2048">2.048 tokens — econômico</option>
+    <option value="3072" selected>3.072 tokens — recomendado</option>
+    <option value="4096">4.096 tokens</option>
+    <option value="8192">8.192 tokens</option>
+  </select>
 
   <label>ALTIV Media Worker</label>
   <input id="mediaWorkerUrl" placeholder="https://media.seudominio.com">
