@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "ALTIV Studio",
+  "version": "1.0.0",
+  "description": "Agente para criar e editar projetos GitHub, gerar mídia e disparar deploys.",
+  "permissions": ["storage", "sidePanel", "tabs"],
+  "host_permissions": [
+    "https://api.github.com/*",
+    "https://api.openai.com/*",
+    "https://openrouter.ai/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://*.vercel.app/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Abrir ALTIV Studio"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}
