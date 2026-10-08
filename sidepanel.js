@@ -27,12 +27,26 @@ async function getSettings(){
   ])
 }
 
+async function hydrateConfiguredModels(settings){
+  const keys=settings.providerKeys||{}
+  for(const [providerId,apiKey] of Object.entries(keys)){
+    if(!apiKey || providerId==='anthropic' || providerId==='auto' || providerModels[providerId]?.length) continue
+    try{
+      providerModels[providerId]=await listProviderModels(providerId,apiKey)
+    }catch{
+      providerModels[providerId]=providerModels[providerId]||[]
+    }
+  }
+}
+
 async function currentAIConfig(){
   const s=await getSettings()
   const provider=s.aiProvider||'auto'
   const keys=s.providerKeys||{}
   const mode=s.modelMode||'auto'
   const maxTokens=Number(s.maxTokens||3072)
+
+  if(mode==='auto') await hydrateConfiguredModels(s)
 
   if(provider==='auto'){
     const candidates=freeFirstCandidates(s,providerModels)
@@ -47,13 +61,16 @@ async function currentAIConfig(){
     ? (manual||selected||PROVIDERS[provider]?.defaultModel||'')
     : (autoModel(provider,available)||selected||PROVIDERS[provider]?.defaultModel||'')
 
-  return {
-    provider,
-    apiKey:keys[provider]||'',
-    model,
-    maxTokens,
-    candidates:[{provider,apiKey:keys[provider]||'',model}]
+  const primary={provider,apiKey:keys[provider]||'',model}
+  let candidates=[primary]
+
+  if(mode==='auto'){
+    const fallbacks=freeFirstCandidates(s,providerModels).filter(x=>x.provider!==provider)
+    candidates=[primary,...fallbacks]
   }
+
+  candidates=candidates.filter(x=>x.apiKey&&x.model)
+  return {provider,candidates,maxTokens}
 }
 
 async function runWithFallback(ai, runner){
