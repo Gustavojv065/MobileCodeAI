@@ -1,0 +1,40 @@
+name: Package ALTIV Studio v2.2
+
+on:
+  push:
+    branches: [altiv-studio-extension-v2-2]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifest
+        run: python -m json.tool manifest.json >/dev/null
+      - name: Validate JavaScript syntax
+        run: |
+          node --check background.js
+          node --check sidepanel.js
+          for f in lib/*.js; do node --check "$f"; done
+      - name: Package extension
+        run: |
+          zip -r ALTIV-Studio-Extension-v2.2.zip manifest.json background.js sidepanel.html sidepanel.js styles.css lib README.md THIRD_PARTY_REFERENCES.md
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ALTIV-Studio-Extension-v2.2
+          path: ALTIV-Studio-Extension-v2.2.zip
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="altiv-studio-extension-v2.2"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" ALTIV-Studio-Extension-v2.2.zip --clobber
+          else
+            gh release create "$TAG" ALTIV-Studio-Extension-v2.2.zip --prerelease --title "ALTIV Studio Extension v2.2" --notes "OpenCode Zen, multi-provider free-first e fallback automático de rate limit/quota."
+          fi

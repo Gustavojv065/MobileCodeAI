@@ -6,7 +6,7 @@ import { DEPLOY_PRESETS, triggerAll } from './lib/deploy.js'
 import { MEDIA_OPERATIONS, runMedia } from './lib/media.js'
 import { loadProjectMemory, rememberRun } from './lib/memory.js'
 import { addJob, updateJob, listJobs, clearJobs } from './lib/jobs.js'
-import { providerEntries, listProviderModels, autoModel, PROVIDERS } from './lib/providers.js'
+import { providerEntries, listProviderModels, autoModel, PROVIDERS, freeFirstCandidates, isRateOrCreditError } from './lib/providers.js'
 
 const $ = id => document.getElementById(id)
 let repos=[]
@@ -27,31 +27,80 @@ async function getSettings(){
   ])
 }
 
+async function hydrateConfiguredModels(settings){
+  const keys=settings.providerKeys||{}
+  for(const [providerId,apiKey] of Object.entries(keys)){
+    if(!apiKey || providerId==='anthropic' || providerId==='auto' || providerModels[providerId]?.length) continue
+    try{
+      providerModels[providerId]=await listProviderModels(providerId,apiKey)
+    }catch{
+      providerModels[providerId]=providerModels[providerId]||[]
+    }
+  }
+}
+
 async function currentAIConfig(){
   const s=await getSettings()
-  const provider=s.aiProvider||'openrouter'
+  const provider=s.aiProvider||'auto'
   const keys=s.providerKeys||{}
   const mode=s.modelMode||'auto'
+  const maxTokens=Number(s.maxTokens||3072)
+
+  if(mode==='auto') await hydrateConfiguredModels(s)
+
+  if(provider==='auto'){
+    const candidates=freeFirstCandidates(s,providerModels)
+    if(!candidates.length) throw new Error('No modo Automático, cadastre pelo menos uma chave em OpenCode Zen, Gemini, NVIDIA, Groq, Cerebras ou OpenRouter.')
+    return {provider:'auto',candidates,maxTokens}
+  }
+
   const available=providerModels[provider]||[]
   const selected=s.selectedModels?.[provider]||''
   const manual=s.manualModels?.[provider]||''
   const model=mode==='manual'
     ? (manual||selected||PROVIDERS[provider]?.defaultModel||'')
     : (autoModel(provider,available)||selected||PROVIDERS[provider]?.defaultModel||'')
-  return {
-    provider,
-    apiKey:keys[provider]||'',
-    model,
-    maxTokens:Number(s.maxTokens||3072)
+
+  const primary={provider,apiKey:keys[provider]||'',model}
+  let candidates=[primary]
+
+  if(mode==='auto'){
+    const fallbacks=freeFirstCandidates(s,providerModels).filter(x=>x.provider!==provider)
+    candidates=[primary,...fallbacks]
   }
+
+  candidates=candidates.filter(x=>x.apiKey&&x.model)
+  return {provider,candidates,maxTokens}
+}
+
+async function runWithFallback(ai, runner){
+  const errors=[]
+  for(const candidate of ai.candidates||[]){
+    if(!candidate.apiKey||!candidate.model) continue
+    try{
+      $('agentStatus').textContent='Tentando '+(PROVIDERS[candidate.provider]?.label||candidate.provider)+' • '+candidate.model
+      const result=await runner({...candidate,maxTokens:ai.maxTokens})
+      return {result,used:candidate,errors}
+    }catch(error){
+      errors.push({provider:candidate.provider,model:candidate.model,error:error.message})
+      if(ai.provider!=='auto' || !isRateOrCreditError(error)) throw error
+    }
+  }
+  const detail=errors.map(x=>(PROVIDERS[x.provider]?.label||x.provider)+': '+x.error).join(' | ')
+  throw new Error('Nenhum provedor automático disponível conseguiu concluir. '+detail)
 }
 
 async function saveSettings(){
   const s=await getSettings()
   const provider=$('aiProvider').value
-  const keys={...(s.providerKeys||{}),[provider]:$('aiKey').value.trim()}
-  const manuals={...(s.manualModels||{}),[provider]:$('aiModelManual').value.trim()}
-  const selected={...(s.selectedModels||{}),[provider]:$('aiModelSelect').value}
+  const keys={...(s.providerKeys||{})}
+  const manuals={...(s.manualModels||{})}
+  const selected={...(s.selectedModels||{})}
+  if(provider!=='auto'){
+    keys[provider]=$('aiKey').value.trim()
+    manuals[provider]=$('aiModelManual').value.trim()
+    selected[provider]=$('aiModelSelect').value
+  }
   const value={
     githubToken:$('githubToken').value.trim(),
     aiProvider:provider,
@@ -74,6 +123,10 @@ async function saveSettings(){
 async function saveCurrentProviderKey(){
   const s=await getSettings()
   const provider=$('aiProvider').value
+  if(provider==='auto'){
+    $('settingsStatus').textContent='Selecione um provedor específico para salvar a chave.'
+    return
+  }
   const keys={...(s.providerKeys||{}),[provider]:$('aiKey').value.trim()}
   await chrome.storage.local.set({providerKeys:keys,aiProvider:provider})
   $('settingsStatus').textContent='Chave de '+(PROVIDERS[provider]?.label||provider)+' salva.'
@@ -84,19 +137,37 @@ function client(token){
   return new GitHubClient(token)
 }
 
-function renderProviderOptions(selected='openrouter'){
+function renderProviderOptions(selected='auto'){
   $('aiProvider').innerHTML=providerEntries().map(p=>`<option value="${p.id}">${p.label}${p.freeFirst?' • free-first':''}</option>`).join('')
   $('aiProvider').value=selected
 }
 
 async function loadProviderUI({refresh=false}={}){
   const s=await getSettings()
-  const provider=$('aiProvider').value||s.aiProvider||'openrouter'
+  const provider=$('aiProvider').value||s.aiProvider||'auto'
   const keys=s.providerKeys||{}
-  $('aiKey').value=keys[provider]||''
+  const isAuto=provider==='auto'
+
+  $('aiKey').value=isAuto?'':(keys[provider]||'')
+  $('aiKey').disabled=isAuto
+  $('saveProviderKey').disabled=isAuto
+  $('refreshModels').disabled=isAuto
   $('modelMode').value=s.modelMode||'auto'
   $('maxTokens').value=String(s.maxTokens||3072)
-  $('aiModelManual').value=s.manualModels?.[provider]||''
+  $('aiModelManual').value=isAuto?'':(s.manualModels?.[provider]||'')
+
+  if(isAuto){
+    const candidates=freeFirstCandidates(s,providerModels)
+    $('aiModelSelect').innerHTML=candidates.length
+      ? candidates.map(x=>`<option>${escapeHtml(PROVIDERS[x.provider]?.label||x.provider)} → ${escapeHtml(x.model)}</option>`).join('')
+      : '<option>Cadastre chaves nos provedores abaixo</option>'
+    $('aiModelSelect').disabled=true
+    $('aiModelManual').style.display='none'
+    $('settingsStatus').textContent=candidates.length
+      ? 'Automático ativo: fallback entre '+candidates.map(x=>PROVIDERS[x.provider]?.label||x.provider).join(' → ')
+      : 'Automático ativo. Cadastre pelo menos uma chave em um provedor free-first.'
+    return
+  }
 
   if(refresh && keys[provider]){
     $('settingsStatus').textContent='Buscando modelos de '+(PROVIDERS[provider]?.label||provider)+'...'
@@ -156,7 +227,7 @@ function renderMediaOperations(){
 async function boot(){
   const s=await getSettings()
   $('githubToken').value=s.githubToken||''
-  renderProviderOptions(s.aiProvider||'openrouter')
+  renderProviderOptions(s.aiProvider||'auto')
   $('mediaWorkerUrl').value=s.mediaWorkerUrl||''
   $('mediaWorkerKey').value=s.mediaWorkerKey||''
   $('lovableUrl').value=s.lovableUrl||''
@@ -206,8 +277,7 @@ async function executeAgent(){
   const settings=await getSettings()
   const ai=await currentAIConfig()
   const gh=client(settings.githubToken)
-  if(!ai.apiKey) throw new Error('Configure a chave API de '+(PROVIDERS[ai.provider]?.label||ai.provider)+'.')
-  if(!ai.model) throw new Error('Selecione ou informe um modelo.')
+  if(!ai.candidates?.length) throw new Error('Nenhum provedor/modelo disponível. Configure uma chave API.')
   const full=$('repoSelect').value
   const {owner,name}=splitRepo(full)
   const base=$('branchSelect').value
@@ -215,7 +285,7 @@ async function executeAgent(){
   if(!prompt) throw new Error('Digite um pedido.')
 
   $('runAgent').disabled=true
-  const job=await addJob({type:'code',title:prompt.slice(0,100),repo:full,status:'running',provider:ai.provider,model:ai.model})
+  const job=await addJob({type:'code',title:prompt.slice(0,100),repo:full,status:'running',provider:ai.provider,model:ai.provider==='auto'?'fallback automático':ai.candidates?.[0]?.model})
   await renderJobs()
 
   try{
@@ -227,18 +297,21 @@ async function executeAgent(){
 
     const memory=await loadProjectMemory(full)
     let plan
+    let usedAI
     if($('pipelineMode').value==='smart'){
-      $('agentStatus').textContent='Arquiteto → Executor → Revisor • '+ai.model
-      plan=await runIntelligentPipeline({
-        provider:ai.provider,apiKey:ai.apiKey,model:ai.model,maxTokens:ai.maxTokens,
+      const attempt=await runWithFallback(ai,candidate=>runIntelligentPipeline({
+        provider:candidate.provider,apiKey:candidate.apiKey,model:candidate.model,maxTokens:candidate.maxTokens,
         prompt,projectContext,memory
-      })
+      }))
+      plan=attempt.result
+      usedAI=attempt.used
     }else{
-      $('agentStatus').textContent='Modo rápido • '+ai.model
-      plan=await runAgent({
-        provider:ai.provider,apiKey:ai.apiKey,model:ai.model,maxTokens:ai.maxTokens,
+      const attempt=await runWithFallback(ai,candidate=>runAgent({
+        provider:candidate.provider,apiKey:candidate.apiKey,model:candidate.model,maxTokens:candidate.maxTokens,
         prompt,context:JSON.stringify(projectContext)
-      })
+      }))
+      plan=attempt.result
+      usedAI=attempt.used
     }
 
     $('agentLog').textContent=JSON.stringify(plan,null,2)
@@ -277,7 +350,7 @@ async function executeAgent(){
     const deploys=await triggerAll(settings.deployTargets||[])
     await rememberRun(full,prompt,plan.summary||'')
 
-    const result={summary:plan.summary,provider:ai.provider,model:ai.model,branch:targetBranch,pullRequest:pr?.html_url,media,deploys,notes:plan.notes||[]}
+    const result={summary:plan.summary,provider:usedAI?.provider,model:usedAI?.model,branch:targetBranch,pullRequest:pr?.html_url,media,deploys,notes:plan.notes||[]}
     $('agentLog').textContent=JSON.stringify(result,null,2)
     $('agentStatus').textContent='Concluído. Alterações enviadas ao GitHub.'
     await updateJob(job.id,{status:'done',result})
@@ -343,7 +416,7 @@ $('modelMode').addEventListener('change',async()=>{
 $('aiModelSelect').addEventListener('change',async()=>{
   const s=await getSettings()
   const provider=$('aiProvider').value
-  await chrome.storage.local.set({selectedModels:{...(s.selectedModels||{}),[provider]:$('aiModelSelect').value}})
+  if(provider!=='auto') await chrome.storage.local.set({selectedModels:{...(s.selectedModels||{}),[provider]:$('aiModelSelect').value}})
 })
 $('refreshRepo').addEventListener('click',()=>loadRepo().catch(showError))
 $('repoSelect').addEventListener('change',()=>loadRepo().catch(showError))
