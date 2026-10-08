@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ALTIV Studio</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div><strong>ALTIV</strong><span>STUDIO</span></div>
+  <small>Agente de código + GitHub + mídia + deploy</small>
+</header>
+
+<nav>
+  <button data-tab="agent" class="active">Agente</button>
+  <button data-tab="github">GitHub</button>
+  <button data-tab="media">Mídia</button>
+  <button data-tab="deploy">Deploy</button>
+  <button data-tab="jobs">Jobs</button>
+  <button data-tab="settings">Config</button>
+</nav>
+
+<main>
+<section id="agent" class="tab active">
+  <div class="grid2">
+    <div>
+      <label>Repositório</label>
+      <select id="repoSelect"></select>
+    </div>
+    <div>
+      <label>Branch base</label>
+      <select id="branchSelect"><option value="main">main</option></select>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="refreshRepo">Atualizar projeto</button>
+    <button id="openRepo">Abrir GitHub</button>
+  </div>
+
+  <label>Pedido para o ALTIV</label>
+  <textarea id="prompt" class="big" placeholder="Ex.: corrija os erros, melhore o visual, crie uma nova página e prepare o deploy..."></textarea>
+
+  <div class="grid2">
+    <div>
+      <label>Modo</label>
+      <select id="writeMode">
+        <option value="pr">Branch + Pull Request</option>
+        <option value="direct">Commit direto</option>
+      </select>
+    </div>
+    <div>
+      <label>Pipeline</label>
+      <select id="pipelineMode">
+        <option value="smart">Arquiteto + Executor + Revisor</option>
+        <option value="fast">Rápido</option>
+      </select>
+    </div>
+  </div>
+
+  <label>Arquivo opcional para focar</label>
+  <select id="fileSelect"><option value="">Contexto automático</option></select>
+  <textarea id="filePreview" class="code" readonly placeholder="O ALTIV monta o contexto do projeto automaticamente."></textarea>
+
+  <button id="runAgent" class="primary">Executar alteração</button>
+  <div id="agentStatus" class="status">Pronto.</div>
+  <pre id="agentLog"></pre>
+</section>
+
+<section id="github" class="tab">
+  <h3>Criar repositório</h3>
+  <input id="newRepoName" placeholder="nome-do-repositorio">
+  <input id="newRepoDescription" placeholder="Descrição do projeto">
+  <label class="check"><input id="newRepoPrivate" type="checkbox" checked> Repositório privado</label>
+  <button id="createRepo" class="primary">Criar no GitHub</button>
+  <div id="githubStatus" class="status"></div>
+</section>
+
+<section id="media" class="tab">
+  <h3>AI Media Studio</h3>
+  <p class="muted">Imagem, vídeo, áudio, voz, restauração e 3D através do ALTIV Media Worker.</p>
+  <label>Operação</label>
+  <select id="mediaOperation"></select>
+  <label>Prompt / instrução</label>
+  <textarea id="mediaPrompt" placeholder="Descreva o resultado que deseja..."></textarea>
+  <label>Arquivo de entrada por URL (quando necessário)</label>
+  <input id="mediaInputUrl" placeholder="https://...">
+  <label>Projeto atual</label>
+  <input id="mediaProject" readonly>
+  <button id="runMedia" class="primary">Executar mídia</button>
+  <div id="mediaStatus" class="status"></div>
+  <pre id="mediaLog"></pre>
+</section>
+
+<section id="deploy" class="tab">
+  <h3>Publicação</h3>
+  <p class="muted">Vercel, Netlify, Render, Railway e outros via deploy hooks. Lovable acompanha o repositório GitHub conectado.</p>
+  <div id="deployTargets"></div>
+  <label>Projeto Lovable</label>
+  <input id="lovableUrl" placeholder="https://lovable.dev/projects/...">
+  <div class="toolbar">
+    <button id="openLovable">Abrir Lovable</button>
+    <button id="testDeploys" class="primary">Testar deploys</button>
+  </div>
+  <div id="deployStatus" class="status"></div>
+</section>
+
+<section id="jobs" class="tab">
+  <div class="toolbar between">
+    <h3>Jobs</h3>
+    <button id="clearJobs">Limpar</button>
+  </div>
+  <div id="jobsList"></div>
+</section>
+
+<section id="settings" class="tab">
+  <h3>Conexões</h3>
+  <label>GitHub Token</label>
+  <input id="githubToken" type="password" placeholder="github_pat_...">
+
+  <label>Provedor de IA</label>
+  <select id="aiProvider">
+    <option value="openai">OpenAI</option>
+    <option value="openrouter">OpenRouter</option>
+    <option value="gemini">Gemini</option>
+  </select>
+  <label>Chave API</label>
+  <input id="aiKey" type="password" placeholder="Chave API">
+  <label>Modelo</label>
+  <input id="aiModel" placeholder="Ex.: gpt-5.6, modelo OpenRouter ou Gemini">
+
+  <label>ALTIV Media Worker</label>
+  <input id="mediaWorkerUrl" placeholder="https://media.seudominio.com">
+  <input id="mediaWorkerKey" type="password" placeholder="Chave do worker">
+
+  <button id="saveSettings" class="primary">Salvar configurações</button>
+  <div id="settingsStatus" class="status"></div>
+</section>
+</main>
+
+<script type="module" src="sidepanel.js"></script>
+</body>
+</html>
