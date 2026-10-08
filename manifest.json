@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ALTIV Studio",
-  "version": "1.0.0",
-  "description": "Agente para criar e editar projetos GitHub, gerar mídia e disparar deploys.",
+  "version": "2.0.0",
+  "description": "Agente inteligente para criar e editar projetos GitHub, gerar mídia e publicar em múltiplas plataformas.",
   "permissions": ["storage", "sidePanel", "tabs"],
   "host_permissions": [
     "https://api.github.com/*",
