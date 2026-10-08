@@ -65,3 +65,14 @@ O caminho seguro é Git-first: a extensão altera e envia para o GitHub. Um proj
 ## Segurança
 
 Use tokens e chaves com o menor privilégio possível. Eles ficam no armazenamento local da extensão e não devem ser commitados nos projetos.
+
+
+## v2.2 — roteamento free-first com fallback
+
+- adiciona OpenCode Zen como provedor;
+- adiciona modo **Automático entre provedores**;
+- no modo automático, tenta provedores com chave configurada na ordem free-first;
+- se um provedor retornar rate limit, quota ou falta de créditos, tenta o próximo automaticamente;
+- quando um provedor específico está selecionado e o modo de modelo está em Automático, ele também pode cair para outros provedores configurados em caso de limite;
+- OpenCode Zen prioriza modelos com sufixo `-free`;
+- OpenRouter continua suportando `openrouter/free`, mas o free tier tem limite diário e não é ilimitado.
